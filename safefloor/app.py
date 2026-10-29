@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
+from openai import OpenAIError
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -17,12 +19,18 @@ from .perception import describe_frame
 from .store import Store, load_zones
 
 
-def seed(store: Store) -> int:
-    """Load the sample observations so the demo has a shift of history."""
+def seed(store: Store, day: str | None = None) -> int:
+    """Load the sample observations so the demo has a shift of history.
+
+    With ``day`` (YYYY-MM-DD) the shift is moved onto that date, so questions
+    about "today" find it whenever the demo runs.
+    """
     if store.observations(limit=1):
         return 0
     samples = json.loads((DATA_DIR / "sample_observations.json").read_text())
     for obs in samples:
+        if day:
+            obs["ts"] = day + obs["ts"][10:]
         store.add_observation(obs)
     return len(samples)
 
@@ -35,11 +43,16 @@ class Question(BaseModel):
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     store = Store(settings.db_path, load_zones(settings.zones_path))
-    seed(store)
+    seed(store, datetime.now(timezone.utc).strftime("%Y-%m-%d"))
     llm = make_llm(settings)
     agent = Agent(llm, store)
 
     app = FastAPI(title="SafeFloor")
+
+    @app.exception_handler(OpenAIError)
+    async def model_error(request: Request, exc: OpenAIError):
+        # A wrong model id, a bad key or a timeout should read clearly in the UI.
+        return JSONResponse(status_code=502, content={"detail": f"Token Factory call failed: {exc}"})
 
     @app.get("/api/status")
     def status():

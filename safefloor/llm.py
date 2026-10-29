@@ -15,6 +15,15 @@ from typing import Any, Protocol
 
 from .config import Settings
 
+THINK = re.compile(r"<think>.*?(</think>|$)", re.DOTALL)
+
+
+def strip_reasoning(text: str | None) -> str | None:
+    """Drop the <think>...</think> block that Nemotron reasoning models can emit."""
+    if text is None:
+        return None
+    return THINK.sub("", text).strip() or None
+
 
 class LLM(Protocol):
     def chat(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> dict[str, Any]: ...
@@ -27,7 +36,7 @@ class TokenFactoryLLM:
         from openai import OpenAI
 
         self.settings = settings
-        self.client = OpenAI(api_key=settings.api_key, base_url=settings.base_url)
+        self.client = OpenAI(api_key=settings.api_key, base_url=settings.base_url, timeout=90, max_retries=2)
 
     def chat(self, messages, tools=None):
         kwargs: dict[str, Any] = {"model": self.settings.agent_model, "messages": messages, "temperature": 0.2}
@@ -39,7 +48,7 @@ class TokenFactoryLLM:
             {"id": c.id, "name": c.function.name, "arguments": c.function.arguments or "{}"}
             for c in (msg.tool_calls or [])
         ]
-        return {"content": msg.content, "tool_calls": calls}
+        return {"content": strip_reasoning(msg.content), "tool_calls": calls}
 
     def vision(self, prompt, image_b64, mime="image/jpeg"):
         resp = self.client.chat.completions.create(
@@ -55,7 +64,7 @@ class TokenFactoryLLM:
                 }
             ],
         )
-        return resp.choices[0].message.content or ""
+        return strip_reasoning(resp.choices[0].message.content) or ""
 
 
 class MockLLM:

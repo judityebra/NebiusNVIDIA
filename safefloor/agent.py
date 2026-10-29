@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from .llm import LLM
@@ -15,7 +16,8 @@ Rules:
 - Cite observation ids in brackets, e.g. [obs 3], for every claim about an event.
 - Be brief and concrete: time, zone, what happened, why it matters.
 - Only file an incident report when the user asks for one, and only cite ids you retrieved.
-- If the data does not answer the question, say so."""
+- If the data does not answer the question, say so.
+The current time is {now} (UTC). Use it to resolve "today", "this morning" and similar."""
 
 MAX_STEPS = 6
 
@@ -26,7 +28,8 @@ class Agent:
         self.tools = make_tools(store)
 
     def ask(self, question: str, history: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-        messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM}]
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM.format(now=now)}]
         messages += history or []
         messages.append({"role": "user", "content": question})
         trace: list[dict[str, Any]] = []

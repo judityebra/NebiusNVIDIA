@@ -1,12 +1,14 @@
 import json
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
+from openai import APIConnectionError
 
 from safefloor.agent import Agent
 from safefloor.app import create_app, seed
 from safefloor.config import DATA_DIR, Settings
-from safefloor.llm import MockLLM
+from safefloor.llm import MockLLM, strip_reasoning
 from safefloor.perception import build_prompt, describe_frame, parse_reply
 from safefloor.store import Store, load_zones
 from safefloor.tools import make_tools, run_tool
@@ -75,6 +77,30 @@ def test_parse_reply_handles_prose_and_bad_values(store):
     out = parse_reply(text, zone)
     assert out == {"summary": "s", "objects": ["person"], "violations": [{"rule_id": "ppe-vest", "confidence": 1.0}]}
     assert parse_reply("no json here", zone)["violations"] == []
+
+
+def test_reasoning_is_stripped_before_parsing(store):
+    assert strip_reasoning("<think>plan {not json}</think>\nHello") == "Hello"
+    assert strip_reasoning("<think>cut off mid thought") is None
+    text = '<think>maybe {"a": 1}?</think> {"summary": "s", "objects": [], "violations": [{"rule_id": "ppe-vest"}]}'
+    out = parse_reply(strip_reasoning(text), store.zones["dock-a"])
+    assert out["summary"] == "s" and out["violations"][0]["rule_id"] == "ppe-vest"
+    assert parse_reply('prose {bad} then {"summary": "ok"}', store.zones["dock-a"])["summary"] == "ok"
+
+
+def test_seed_moves_shift_onto_given_day(tmp_path):
+    s = Store(tmp_path / "d.db", load_zones(DATA_DIR / "zones.json"))
+    seed(s, "2027-01-15")
+    assert all(o["ts"].startswith("2027-01-15T") for o in s.observations(limit=100))
+
+
+def test_model_errors_become_502(client, monkeypatch):
+    def fail(*args, **kwargs):
+        raise APIConnectionError(request=httpx.Request("POST", "http://unused"))
+
+    monkeypatch.setattr(MockLLM, "chat", fail)
+    r = client.post("/api/ask", json={"question": "anything"})
+    assert r.status_code == 502 and "Token Factory" in r.json()["detail"]
 
 
 def test_prompt_lists_zone_rules(store):

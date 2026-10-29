@@ -3,8 +3,13 @@
 import argparse
 
 import uvicorn
+from dotenv import load_dotenv
 
 from .app import create_app
+from .config import ROOT
+
+# Variables already set in the shell win over the .env file.
+load_dotenv(ROOT / ".env")
 
 parser = argparse.ArgumentParser(prog="safefloor")
 parser.add_argument("--host", default="127.0.0.1")

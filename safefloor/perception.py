@@ -28,13 +28,22 @@ def build_prompt(camera: str, zone: Zone) -> str:
     return PROMPT.format(camera=camera, zone_name=zone.name, rules=rules)
 
 
+def first_json_object(text: str) -> dict[str, Any]:
+    """Return the first JSON object embedded in the text, or {} if there is none."""
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", text):
+        try:
+            data, _ = decoder.raw_decode(text, match.start())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict):
+            return data
+    return {}
+
+
 def parse_reply(text: str, zone: Zone) -> dict[str, Any]:
     """Pull the JSON object out of the reply and drop anything malformed."""
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    try:
-        data = json.loads(match.group(0)) if match else {}
-    except json.JSONDecodeError:
-        data = {}
+    data = first_json_object(text)
     known = {r["id"] for r in zone.rules}
     violations = []
     for v in data.get("violations") or []:

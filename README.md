@@ -63,20 +63,19 @@ pip install -r requirements.txt
 cp .env.example .env    # then set NEBIUS_API_KEY
 ```
 
-Load the variables and start the server:
+Start the server. It reads `.env` from the repo root; variables already set in the shell win.
 
 ```bash
-set -a; source .env; set +a
 python -m safefloor
 ```
 
-Open http://127.0.0.1:8000. On Windows PowerShell, set the variables with
-`$env:NEBIUS_API_KEY="..."` before `python -m safefloor`.
+Open http://127.0.0.1:8000.
 
 Without `NEBIUS_API_KEY` the app starts in **mock mode**: a scripted model stands in for Nemotron so
 the UI, the agent loop and the tests run offline. The badge in the header shows which mode is on.
 
-The app seeds one shift of sample observations (`data/sample_observations.json`) on first start.
+The app seeds one shift of sample observations (`data/sample_observations.json`) on first start,
+dated to the current day so questions about "today" work. Delete `data/safefloor.db` to reseed.
 Zones and rules are in `data/zones.json`; edit them to match a real site.
 
 Docker:
