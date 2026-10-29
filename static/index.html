@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SafeFloor</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>SafeFloor</h1>
+    <p class="sub">Warehouse safety copilot · NVIDIA Nemotron on Nebius Token Factory</p>
+  </div>
+  <span id="mode" class="badge"></span>
+</header>
+
+<main>
+  <section class="panel" id="zones-panel">
+    <h2>Zones and rules</h2>
+    <div id="zones"></div>
+  </section>
+
+  <section class="panel" id="feed-panel">
+    <div class="row">
+      <h2>Camera observations</h2>
+      <label class="toggle"><input type="checkbox" id="only-v"> Violations only</label>
+    </div>
+    <form id="upload" class="upload">
+      <select id="camera" aria-label="Camera"></select>
+      <input type="file" id="frame" accept="image/*" aria-label="Frame image" required>
+      <button type="submit">Analyse frame</button>
+    </form>
+    <ol id="feed"></ol>
+  </section>
+
+  <section class="panel" id="chat-panel">
+    <h2>Ask SafeFloor</h2>
+    <div class="chips">
+      <button class="chip">Which zone had the most violations today?</button>
+      <button class="chip">Show near misses with forklifts at the dock</button>
+      <button class="chip">Write an incident report for the worst dock event</button>
+    </div>
+    <div id="chat"></div>
+    <form id="ask" class="ask">
+      <input id="question" placeholder="Ask about what the cameras saw…" autocomplete="off" aria-label="Question">
+      <button type="submit">Ask</button>
+    </form>
+    <h2 class="mt">Incident reports</h2>
+    <ul id="incidents"></ul>
+  </section>
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+[
+  {"camera": "cam-01", "ts": "2026-10-29T07:02:11Z", "summary": "Forklift reversing out of trailer; two workers on the dock, both in hi-vis vests.", "objects": ["forklift", "person", "person", "pallet"], "violations": []},
+  {"camera": "cam-01", "ts": "2026-10-29T07:15:40Z", "summary": "Worker without a high-visibility vest walks behind a moving forklift at about 1.5 m.", "objects": ["forklift", "person"], "violations": [{"rule_id": "ppe-vest", "confidence": 0.86}, {"rule_id": "forklift-gap", "confidence": 0.78}]},
+  {"camera": "cam-02", "ts": "2026-10-29T07:31:05Z", "summary": "Picker on a step ladder reaching the top shelf with no hard hat.", "objects": ["person", "ladder", "rack"], "violations": [{"rule_id": "ppe-helmet", "confidence": 0.81}]},
+  {"camera": "cam-02", "ts": "2026-10-29T08:04:52Z", "summary": "Empty pallet left across the walkway of aisle 7.", "objects": ["pallet", "rack"], "violations": [{"rule_id": "clear-aisle", "confidence": 0.92}]},
+  {"camera": "cam-03", "ts": "2026-10-29T08:20:17Z", "summary": "Charging bay with three forklifts on chargers, no people present.", "objects": ["forklift", "forklift", "forklift", "charger"], "violations": []},
+  {"camera": "cam-03", "ts": "2026-10-29T09:12:33Z", "summary": "Pedestrian cuts through the charging bay while batteries are charging.", "objects": ["person", "forklift", "charger"], "violations": [{"rule_id": "no-entry", "confidence": 0.74}]},
+  {"camera": "cam-01", "ts": "2026-10-29T09:45:08Z", "summary": "Two workers unloading boxes by hand, vests on, forklift parked.", "objects": ["person", "person", "forklift", "box"], "violations": []},
+  {"camera": "cam-01", "ts": "2026-10-29T10:03:29Z", "summary": "Forklift turns into the dock lane while a worker in a vest crosses about 2 m ahead.", "objects": ["forklift", "person"], "violations": [{"rule_id": "forklift-gap", "confidence": 0.69}]}
+]
