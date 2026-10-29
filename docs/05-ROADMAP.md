@@ -13,4 +13,4 @@ Purpose: milestones to the deadline (2026-10-30 10:00 PT, per `docs/SUBMISSION.m
 
 ## Risks
 - Model ids change; vision JSON reliability unproven live.
-- No CI configured. Status: Unconfirmed
+- CI: `.github/workflows/ci.yml` runs pytest on PRs and squash-merges them when green.

@@ -10,6 +10,6 @@ Purpose: who is on the team and who owns what.
 Status: Unconfirmed (roles and ownership).
 
 ## Working agreements
-- Work on branches, open PRs, merge when CI is green (no CI configured yet).
+- Work on branches, open PRs, merge when CI is green (CI runs pytest and auto-merges green PRs).
 - Never commit secrets or `.env`.
 - TODO: communication channel, review rules.
