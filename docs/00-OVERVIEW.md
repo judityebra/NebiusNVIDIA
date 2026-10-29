@@ -4,10 +4,10 @@ Purpose: one-page summary of the hackathon and the project.
 
 ## Hackathon
 - Name: Nebius x NVIDIA Global AI Hackathon 2026 (from README). Track: Physical AI.
-- Organisers: TODO. Status: Unconfirmed
-- Challenge statement: TODO. Status: Unconfirmed
-- Deadline: 2026-10-30 10:00 PT (17:00 UTC, 18:00 Barcelona), per `docs/SUBMISSION.md`.
-- Links (event page, Devpost, Discord): TODO. Status: Unconfirmed
+- Organisers: Nebius, funded by NVIDIA; judges from NVIDIA, Nebius and Tavily (third-party listing).
+- Challenge: build a working AI system on Nebius AI Cloud or Token Factory using at least one NVIDIA open model (e.g. Nemotron). See `01-RULES-AND-CRITERIA.md`.
+- Deadline: 2026-10-30 10:00 PDT (17:00 UTC, 18:00 Barcelona).
+- Links: https://nebiusglobalaihackathon.devpost.com/ (Devpost). Discord: TODO. Status: Unconfirmed
 
 ## Goal
 Turn warehouse camera frames into a searchable log of safety events and let supervisors query it in plain language, with every claim citing observation ids.

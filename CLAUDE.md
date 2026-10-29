@@ -21,4 +21,4 @@ Python 3.12, FastAPI + uvicorn, SQLite, OpenAI-compatible client (Nebius Token F
 ## Git rules
 - No secrets or `.env` in git (`.env.example` only).
 - Commit as Isaac: `git -c user.name="Isaac Boqué Carbonell" -c user.email="isboque19@gmail.com" commit ...`
-- Never push to main directly. Use work branches + PR; merge only when CI is green (or the repo has no checks).
+- Never push to main directly. Work branches + PR; `.github/workflows/ci.yml` runs pytest and squash-merges the PR automatically when green. Do not merge manually while it is red.
