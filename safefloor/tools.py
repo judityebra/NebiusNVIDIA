@@ -23,7 +23,8 @@ SCHEMAS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "search_observations",
-            "description": "Search camera observations. Timestamps are ISO 8601 UTC, e.g. 2026-10-29T07:00:00Z.",
+            "description": "Search camera observations. Timestamps are ISO 8601 UTC, e.g. 2026-10-29T07:00:00Z. "
+            "Returns at most the 50 newest matches; if truncated is true, narrow the query (zone, since/until, only_violations) and search again.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -71,7 +72,10 @@ def make_tools(store: Store) -> dict[str, Callable[..., Any]]:
         return {"zones": [vars(z) for z in store.zones.values()]}
 
     def search_observations(zone_id=None, since=None, until=None, query=None, only_violations=False):
-        return {"observations": store.observations(zone_id, since, until, query, bool(only_violations))}
+        flag = bool(only_violations)
+        rows = store.observations(zone_id, since, until, query, flag)
+        total = store.count_observations(zone_id, since, until, query, flag)
+        return {"observations": rows, "truncated": total > len(rows), "total_matching": total}
 
     def count_violations(zone_id=None):
         return {"counts": store.violation_counts(zone_id)}

@@ -90,7 +90,29 @@ class Store:
         only_violations: bool = False,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        sql = "SELECT * FROM observations WHERE 1=1"
+        """The newest ``limit`` matching observations, in chronological order."""
+        where, args = self._where(zone_id, since, until, query, only_violations)
+        sql = (
+            f"SELECT * FROM (SELECT * FROM observations WHERE {where} ORDER BY ts DESC, id DESC LIMIT ?) "
+            "ORDER BY ts, id"
+        )
+        rows = self.conn.execute(sql, [*args, limit]).fetchall()
+        return [self._with_violations(dict(r)) for r in rows]
+
+    def count_observations(
+        self,
+        zone_id: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        query: str | None = None,
+        only_violations: bool = False,
+    ) -> int:
+        where, args = self._where(zone_id, since, until, query, only_violations)
+        return self.conn.execute(f"SELECT COUNT(*) FROM observations WHERE {where}", args).fetchone()[0]
+
+    @staticmethod
+    def _where(zone_id, since, until, query, only_violations) -> tuple[str, list[Any]]:
+        sql = "1=1"
         args: list[Any] = []
         if zone_id:
             sql += " AND zone_id = ?"
@@ -106,10 +128,7 @@ class Store:
             args += [f"%{query}%", f"%{query}%"]
         if only_violations:
             sql += " AND id IN (SELECT observation_id FROM violations)"
-        sql += " ORDER BY ts LIMIT ?"
-        args.append(limit)
-        rows = self.conn.execute(sql, args).fetchall()
-        return [self._with_violations(dict(r)) for r in rows]
+        return sql, args
 
     def get_observation(self, obs_id: int) -> dict[str, Any] | None:
         row = self.conn.execute("SELECT * FROM observations WHERE id = ?", (obs_id,)).fetchone()

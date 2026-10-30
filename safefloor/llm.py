@@ -27,7 +27,9 @@ class TokenFactoryLLM:
         from openai import OpenAI
 
         self.settings = settings
-        self.client = OpenAI(api_key=settings.api_key, base_url=settings.base_url)
+        self.client = OpenAI(
+            api_key=settings.api_key, base_url=settings.base_url, timeout=settings.timeout, max_retries=2
+        )
 
     def chat(self, messages, tools=None):
         kwargs: dict[str, Any] = {"model": self.settings.agent_model, "messages": messages, "temperature": 0.2}
