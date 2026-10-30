@@ -1,0 +1,6 @@
+[
+  {"image": "frames/clip1_0007.jpg", "camera": "cam-01", "violations": ["ppe-vest"], "note": "worker without vest next to pallet"},
+  {"image": "frames/clip1_0012.jpg", "camera": "cam-01", "violations": ["ppe-vest", "forklift-gap"], "note": "same worker, forklift 2 m away"},
+  {"image": "frames/clip2_0003.jpg", "camera": "cam-02", "violations": [], "note": "clean aisle, hard hats on"},
+  {"image": "frames/clip3_0001.jpg", "camera": "cam-03", "violations": ["no-entry"], "note": "pedestrian in the charging bay"}
+]
