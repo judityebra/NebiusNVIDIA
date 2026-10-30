@@ -23,8 +23,12 @@ Look at the image and reply with ONLY a JSON object, no prose, in this shape:
 List a violation only when the image shows evidence of it. If nothing is wrong, return an empty list."""
 
 
-def build_prompt(camera: str, zone: Zone) -> str:
-    rules = "\n".join(f"- {r['id']} ({r['severity']}): {r['text']}" for r in zone.rules)
+def build_prompt(camera: str, zone: Zone, prompt_mode: str = "zone-rules") -> str:
+    """``rule-ids-only`` drops the written rule texts (ablation: what do the zone rules add?)."""
+    if prompt_mode == "rule-ids-only":
+        rules = "\n".join(f"- {r['id']} ({r['severity']})" for r in zone.rules)
+    else:
+        rules = "\n".join(f"- {r['id']} ({r['severity']}): {r['text']}" for r in zone.rules)
     return PROMPT.format(camera=camera, zone_name=zone.name, rules=rules)
 
 
@@ -91,8 +95,8 @@ def parse_reply(text: str, zone: Zone) -> dict[str, Any]:
     return {"summary": summary, "objects": objects, "violations": violations}
 
 
-def describe_frame(llm: LLM, image: bytes, camera: str, zone: Zone, mime: str = "image/jpeg", ts: str | None = None) -> dict[str, Any]:
-    prompt, b64 = build_prompt(camera, zone), base64.b64encode(image).decode()
+def describe_frame(llm: LLM, image: bytes, camera: str, zone: Zone, mime: str = "image/jpeg", ts: str | None = None, prompt_mode: str = "zone-rules") -> dict[str, Any]:
+    prompt, b64 = build_prompt(camera, zone, prompt_mode), base64.b64encode(image).decode()
     reply = llm.vision(prompt, b64, mime)
     if extract_json(reply) is None:  # one more try before giving up
         reply = llm.vision(prompt, b64, mime)
