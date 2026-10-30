@@ -21,8 +21,7 @@ NVIDIA Nemotron and Nebius Token Factory.
 
 ## Inspiration
 
-[Write in your own words. Suggested angle: your client work on a warehouse vision agent with NVIDIA
-VSS showed that safety teams review footage only after an accident. Do not name the client.]
+TODO (Isaac + Judit): write in your own words, no client or employer names.
 
 ## What it does
 
@@ -61,6 +60,10 @@ inventing events, mapping model output to rules it is allowed to report.]
 
 Sampling live RTSP streams, tracking people and forklifts across frames, measured distances from
 calibrated cameras, and alerts pushed to the shift lead in real time.
+
+## Pre-existing project
+
+TODO (Judit + Isaac): the Devpost form asks what was significantly updated during the submission period; list real commits, nothing invented.
 
 ## Feedback on Nebius and NVIDIA tools (required)
 
