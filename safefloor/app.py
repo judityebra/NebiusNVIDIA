@@ -3,20 +3,28 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+import os
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .agent import Agent
 from .config import DATA_DIR, ROOT, Settings
 from .llm import make_llm
+from .events import build_events
 from .perception import VisionError, describe_frame
 from .store import Store, load_zones
+from .video import sample_frames
+
+MAX_CLIP_BYTES = 60 * 1024 * 1024
+TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 def seed(store: Store) -> int:
@@ -65,6 +73,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     agent = Agent(llm, store)
 
     app = FastAPI(title="SafeFloor")
+
+    def save_frame(obs_id: int, ext: str, data: bytes) -> None:
+        try:
+            frames_dir.mkdir(parents=True, exist_ok=True)
+            (frames_dir / f"{obs_id}.{ext}").write_bytes(data)
+        except OSError:  # keep the observation, just without an evidence frame
+            store.clear_frame(obs_id)
 
     @app.get("/api/status")
     def status():
@@ -120,12 +135,74 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         obs["source"] = "mock" if settings.mock else "nemotron"
         obs["frame_ext"] = frame_ext(image.content_type, image.filename)
         obs_id = store.add_observation(obs)
-        try:
-            frames_dir.mkdir(parents=True, exist_ok=True)
-            (frames_dir / f"{obs_id}.{obs['frame_ext']}").write_bytes(data)
-        except OSError:  # keep the observation, just without an evidence frame
-            store.clear_frame(obs_id)
+        save_frame(obs_id, obs["frame_ext"], data)
         return store.get_observation(obs_id)
+
+    @app.post("/api/clips")
+    def ingest_clip(
+        camera: str = Form(...),
+        video: UploadFile = File(...),
+        fps: float = Form(1.0),
+        ts: str | None = Form(None),
+    ):
+        zone = store.zone_for_camera(camera)
+        if zone is None:
+            raise HTTPException(404, f"unknown camera {camera}")
+        fps = min(max(fps, 0.5), 2.0)
+        start = datetime.strptime(parse_ts(ts) if ts else datetime.now(timezone.utc).strftime(TS_FORMAT), TS_FORMAT)
+        clip_name = Path(video.filename or "clip").name[:120]
+        suffix = "." + "".join(c for c in Path(clip_name).suffix[1:] if c.isalnum())[:5] if Path(clip_name).suffix else ".mp4"
+        fd, tmp_path = tempfile.mkstemp(suffix=suffix)
+        try:
+            size = 0
+            with os.fdopen(fd, "wb") as tmp:
+                while chunk := video.file.read(1 << 20):
+                    size += len(chunk)
+                    if size > MAX_CLIP_BYTES:
+                        raise HTTPException(413, f"video larger than {MAX_CLIP_BYTES // (1024 * 1024)} MB")
+                    tmp.write(chunk)
+            if size == 0:
+                raise HTTPException(400, "empty video")
+            try:
+                samples = sample_frames(tmp_path, fps=fps)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
+        finally:
+            os.unlink(tmp_path)
+
+        def analyse(item):
+            t, jpeg = item
+            try:
+                obs = describe_frame(llm, jpeg, camera, zone, "image/jpeg")
+            except Exception:  # one bad frame must not sink the clip
+                return None
+            return {"t": t, "jpeg": jpeg, "summary": obs["summary"], "objects": obs["objects"], "violations": obs["violations"]}
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            analysed = list(pool.map(analyse, samples))
+        frames = [f for f in analysed if f]
+        if not frames:
+            raise HTTPException(502, "vision model failed on every sampled frame")
+        source = "mock" if settings.mock else "nemotron"
+        stored = []
+        for ev in build_events(frames):
+            obs_id = store.add_observation(
+                {
+                    "camera": camera,
+                    "ts": (start + timedelta(seconds=ev["start_t"])).strftime(TS_FORMAT),
+                    "end_ts": (start + timedelta(seconds=ev["end_t"])).strftime(TS_FORMAT),
+                    "summary": ev["summary"],
+                    "objects": ev["objects"],
+                    "violations": ev["violations"],
+                    "source": source,
+                    "frame_ext": "jpg",
+                    "clip": clip_name,
+                    "frame_count": ev["frame_count"],
+                }
+            )
+            save_frame(obs_id, "jpg", ev["jpeg"])
+            stored.append(store.get_observation(obs_id))
+        return JSONResponse(stored, headers={"X-Frames-Skipped": str(len(analysed) - len(frames))})
 
     @app.post("/api/ask")
     def ask(q: Question):

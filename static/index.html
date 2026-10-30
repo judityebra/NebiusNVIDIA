@@ -31,6 +31,12 @@
       <input type="file" id="frame" accept="image/*" aria-label="Frame image" required>
       <button type="submit">Analyse frame</button>
     </form>
+    <form id="clip-form" class="upload">
+      <select id="clip-camera" aria-label="Camera for clip"></select>
+      <input type="file" id="clip" accept="video/*" aria-label="Video clip" required>
+      <button type="submit">Analyse clip</button>
+      <span id="clip-status" class="meta" role="status"></span>
+    </form>
     <ol id="feed"></ol>
   </section>
 

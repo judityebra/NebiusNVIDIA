@@ -24,7 +24,9 @@ async function loadZones() {
   $("#zones").innerHTML = zones.map((z) => `
     <div class="zone"><h3>${esc(z.name)}</h3><small>${esc(z.id)} · ${esc(z.camera)}</small>
       <ul>${z.rules.map((r) => `<li>${sev(r.severity)}${esc(r.text)}</li>`).join("")}</ul></div>`).join("");
-  $("#camera").innerHTML = zones.map((z) => `<option value="${esc(z.camera)}">${esc(z.camera)} · ${esc(z.name)}</option>`).join("");
+  const options = zones.map((z) => `<option value="${esc(z.camera)}">${esc(z.camera)} · ${esc(z.name)}</option>`).join("");
+  $("#camera").innerHTML = options;
+  $("#clip-camera").innerHTML = options;
 }
 
 const sourceChip = (s) => `<span class="src ${esc(s)}">${esc(s)}</span>`;
@@ -36,7 +38,7 @@ async function loadFeed() {
   const only = $("#only-v").checked;
   const obs = await api(`/api/observations?only_violations=${only}`);
   $("#feed").innerHTML = obs.reverse().map((o) => `
-    <li><div class="meta">obs ${o.id} · ${esc(o.ts)} · ${esc(o.zone_id)} ${sourceChip(o.source)}</div>
+    <li><div class="meta">obs ${o.id} · ${esc(o.ts)}${o.end_ts ? ` → ${esc(o.end_ts.slice(11))}` : ""} · ${esc(o.zone_id)} ${sourceChip(o.source)}${o.clip ? ` <span class="src">clip</span> ${esc(o.clip)}` : ""}</div>
       ${thumb(o)}
       ${esc(o.summary)}
       ${o.violations.map((v) => `<div>${sev(v.severity)}${esc(v.rule)} <span class="meta">(${Math.round(v.confidence * 100)}%)</span></div>`).join("")}
@@ -158,6 +160,29 @@ $("#upload").addEventListener("submit", async (e) => {
   } catch (err) {
     alert(err.message);
   } finally {
+    btn.disabled = false;
+  }
+});
+
+$("#clip-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("#clip-form button");
+  const status = $("#clip-status");
+  const fd = new FormData();
+  fd.append("camera", $("#clip-camera").value);
+  fd.append("video", $("#clip").files[0]);
+  btn.disabled = true;
+  status.textContent = "Analysing clip… this can take a minute";
+  status.classList.add("busy");
+  try {
+    const events = await api("/api/clips", { method: "POST", body: fd });
+    status.textContent = `${events.length} event(s) found`;
+    await loadFeed();
+  } catch (err) {
+    status.textContent = "";
+    alert(err.message);
+  } finally {
+    status.classList.remove("busy");
     btn.disabled = false;
   }
 });
