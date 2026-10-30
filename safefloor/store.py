@@ -42,6 +42,7 @@ MIGRATIONS: list[tuple[str, str, str]] = [
     ("observations", "end_ts", "TEXT"),
     ("observations", "clip", "TEXT"),
     ("observations", "frame_count", "INTEGER"),
+    ("incidents", "regulation_refs", "TEXT"),
 ]
 
 
@@ -189,10 +190,18 @@ class Store:
         sql += " GROUP BY o.zone_id, v.rule_id ORDER BY n DESC"
         return [dict(r) for r in self.conn.execute(sql, args).fetchall()]
 
-    def add_incident(self, created_ts: str, title: str, severity: str, observation_ids: list[int], body: str) -> int:
+    def add_incident(
+        self,
+        created_ts: str,
+        title: str,
+        severity: str,
+        observation_ids: list[int],
+        body: str,
+        regulation_refs: list[dict[str, str]] | None = None,
+    ) -> int:
         cur = self.conn.execute(
-            "INSERT INTO incidents (created_ts, title, severity, observation_ids, body) VALUES (?, ?, ?, ?, ?)",
-            (created_ts, title, severity, json.dumps(observation_ids), body),
+            "INSERT INTO incidents (created_ts, title, severity, observation_ids, body, regulation_refs) VALUES (?, ?, ?, ?, ?, ?)",
+            (created_ts, title, severity, json.dumps(observation_ids), body, json.dumps(regulation_refs or [])),
         )
         self.conn.commit()
         return cur.lastrowid
@@ -203,5 +212,6 @@ class Store:
         for r in rows:
             d = dict(r)
             d["observation_ids"] = json.loads(d["observation_ids"])
+            d["regulation_refs"] = json.loads(d["regulation_refs"] or "[]")
             out.append(d)
         return out

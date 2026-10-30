@@ -8,8 +8,9 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from .llm import LLM
+from .regulations import RegulationLookup
 from .store import Store
-from .tools import SCHEMAS, make_tools, run_tool
+from .tools import SCHEMAS, RunState, make_tools, run_tool
 
 SYSTEM = """You are SafeFloor, a safety copilot for warehouse supervisors.
 You answer questions about what the site cameras saw, using only the tools provided.
@@ -18,6 +19,7 @@ Rules:
 - Cite observation ids in brackets, e.g. [obs 3], for every claim about an event.
 - Be brief and concrete: time, zone, what happened, why it matters.
 - Only file an incident report when the user asks for one, and only cite ids you retrieved.
+- When filing a report, call lookup_regulation for the violated rule first and pass the links it returned as regulation_refs; never cite a regulation any other way. If the lookup is unavailable, say so and file without one.
 - If the data does not answer the question, say so.
 - Current UTC time: {now}. All timestamps are UTC; convert "today", "yesterday", "this morning" to ISO ranges before searching.
 - If a search result says truncated, narrow the query before concluding anything."""
@@ -61,10 +63,17 @@ def mark_unverified(text: str, unverified: set[int]) -> str:
 
 
 class Agent:
-    def __init__(self, llm: LLM, store: Store, clock: Callable[[], datetime] | None = None):
+    def __init__(
+        self,
+        llm: LLM,
+        store: Store,
+        clock: Callable[[], datetime] | None = None,
+        regulations: RegulationLookup | None = None,
+    ):
         self.llm = llm
+        self.store = store
+        self.regulations = regulations or RegulationLookup()
         self.clock = clock or (lambda: datetime.now(timezone.utc))
-        self.tools = make_tools(store)
 
     def ask(self, question: str, history: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM.format(now=self.clock().strftime("%Y-%m-%dT%H:%M:%SZ"))}]
@@ -72,6 +81,7 @@ class Agent:
         messages.append({"role": "user", "content": question})
         trace: list[dict[str, Any]] = []
         retrieved: set[int] = set()
+        tools = make_tools(self.store, self.regulations, RunState())  # fresh per ask(): regulation urls are per run
         for _ in range(MAX_STEPS):
             reply = self.llm.chat(messages, SCHEMAS)
             if not reply["tool_calls"]:
@@ -87,7 +97,7 @@ class Agent:
                 }
             )
             for call in reply["tool_calls"]:
-                result = run_tool(self.tools, call["name"], call["arguments"])
+                result = run_tool(tools, call["name"], call["arguments"])
                 retrieved |= retrieved_ids(result)
                 trace.append({"tool": call["name"], "arguments": call["arguments"], "result": result[:2000]})
                 messages.append({"role": "tool", "tool_call_id": call["id"], "content": result})

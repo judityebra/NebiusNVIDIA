@@ -20,6 +20,7 @@ from .config import DATA_DIR, ROOT, Settings
 from .llm import make_llm
 from .events import build_events
 from .perception import VisionError, describe_frame
+from .regulations import RegulationLookup
 from .store import Store, load_zones
 from .video import sample_frames
 
@@ -70,7 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     seed(store)
     llm = make_llm(settings)
     frames_dir = settings.frames_dir or settings.db_path.parent / "frames"
-    agent = Agent(llm, store)
+    agent = Agent(llm, store, regulations=RegulationLookup(settings.tavily_api_key, settings.mock))
 
     app = FastAPI(title="SafeFloor")
 
