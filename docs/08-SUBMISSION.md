@@ -12,3 +12,6 @@ Purpose: final checklist. The Devpost draft text lives in [SUBMISSION.md](SUBMIS
 - [ ] Tool feedback on Nebius and NVIDIA written
 - [ ] Form fields and platform: TODO. Status: Unconfirmed
 - [ ] Submitted before 2026-10-30 10:00 PT
+
+## Needs Judit (only the repo owner can do these)
+- [ ] Repo must be PUBLIC: it is currently private and only the owner (judityebra) can change that in Settings.
