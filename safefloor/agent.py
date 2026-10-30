@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Callable
 
 from .llm import LLM
 from .store import Store
@@ -15,18 +16,21 @@ Rules:
 - Cite observation ids in brackets, e.g. [obs 3], for every claim about an event.
 - Be brief and concrete: time, zone, what happened, why it matters.
 - Only file an incident report when the user asks for one, and only cite ids you retrieved.
-- If the data does not answer the question, say so."""
+- If the data does not answer the question, say so.
+- Current UTC time: {now}. All timestamps are UTC; convert "today", "yesterday", "this morning" to ISO ranges before searching.
+- If a search result says truncated, narrow the query before concluding anything."""
 
 MAX_STEPS = 6
 
 
 class Agent:
-    def __init__(self, llm: LLM, store: Store):
+    def __init__(self, llm: LLM, store: Store, clock: Callable[[], datetime] | None = None):
         self.llm = llm
+        self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.tools = make_tools(store)
 
     def ask(self, question: str, history: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-        messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM}]
+        messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM.format(now=self.clock().strftime("%Y-%m-%dT%H:%M:%SZ"))}]
         messages += history or []
         messages.append({"role": "user", "content": question})
         trace: list[dict[str, Any]] = []

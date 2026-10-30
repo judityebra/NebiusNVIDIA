@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from .agent import Agent
 from .config import DATA_DIR, ROOT, Settings
 from .llm import make_llm
-from .perception import describe_frame
+from .perception import VisionError, describe_frame
 from .store import Store, load_zones
 
 
@@ -70,7 +70,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         data = await image.read()
         if not data:
             raise HTTPException(400, "empty image")
-        obs = describe_frame(llm, data, camera, zone, image.content_type or "image/jpeg")
+        try:
+            obs = describe_frame(llm, data, camera, zone, image.content_type or "image/jpeg")
+        except VisionError as exc:
+            raise HTTPException(502, str(exc)) from exc
+        except Exception as exc:  # network or API failure: visible error, nothing stored
+            raise HTTPException(502, f"vision model call failed: {type(exc).__name__}") from exc
         obs_id = store.add_observation(obs)
         return store.get_observation(obs_id)
 

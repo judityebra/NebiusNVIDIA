@@ -19,6 +19,7 @@ class Settings:
     db_path: Path
     zones_path: Path
     mock: bool
+    timeout: float = 60.0
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -35,4 +36,5 @@ class Settings:
             db_path=Path(os.getenv("SAFEFLOOR_DB", str(DATA_DIR / "safefloor.db"))),
             zones_path=Path(os.getenv("SAFEFLOOR_ZONES", str(DATA_DIR / "zones.json"))),
             mock=mock,
+            timeout=float(os.getenv("SAFEFLOOR_TIMEOUT", "60")),
         )
