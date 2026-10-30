@@ -59,3 +59,6 @@ dialog { max-width: min(560px, 92vw); border: 1px solid var(--line); border-radi
 dialog::backdrop { background: rgba(0, 0, 0, .5); }
 dialog .frame { max-width: 100%; border-radius: 6px; }
 dialog h3 { margin-top: 0; }
+#clip-form { margin-top: 8px; }
+#clip-status.busy::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -1px; }
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS incidents (
 MIGRATIONS: list[tuple[str, str, str]] = [
     ("observations", "source", "TEXT"),
     ("observations", "frame_ext", "TEXT"),
+    ("observations", "end_ts", "TEXT"),
+    ("observations", "clip", "TEXT"),
+    ("observations", "frame_count", "INTEGER"),
 ]
 
 
@@ -85,11 +88,11 @@ class Store:
         if zone is None:
             raise ValueError(f"unknown camera {obs['camera']!r}")
         cur = self.conn.execute(
-            "INSERT INTO observations (camera, zone_id, ts, summary, objects, source, frame_ext) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO observations (camera, zone_id, ts, summary, objects, source, frame_ext, end_ts, clip, frame_count) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 obs["camera"], zone.id, obs["ts"], obs["summary"], json.dumps(obs.get("objects", [])),
-                obs.get("source"), obs.get("frame_ext"),
+                obs.get("source"), obs.get("frame_ext"), obs.get("end_ts"), obs.get("clip"), obs.get("frame_count"),
             ),
         )
         obs_id = cur.lastrowid

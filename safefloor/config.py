@@ -21,6 +21,7 @@ class Settings:
     mock: bool
     timeout: float = 60.0
     frames_dir: Path | None = None
+    vision_mode: str = "per_frame"
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -29,6 +30,9 @@ class Settings:
         # It is on by default when no key is configured.
         mock_env = os.getenv("SAFEFLOOR_MOCK")
         mock = (mock_env.lower() in {"1", "true", "yes"}) if mock_env else api_key is None
+        vision_mode = os.getenv("SAFEFLOOR_VISION_MODE", "per_frame")
+        if vision_mode != "per_frame":  # a single multi-image call is not implemented yet
+            raise ValueError(f"SAFEFLOOR_VISION_MODE={vision_mode!r} is not supported; only 'per_frame' is")
         return cls(
             api_key=api_key,
             base_url=os.getenv("NEBIUS_BASE_URL", "https://api.tokenfactory.nebius.com/v1/"),
@@ -39,4 +43,5 @@ class Settings:
             mock=mock,
             timeout=float(os.getenv("SAFEFLOOR_TIMEOUT", "60")),
             frames_dir=Path(os.getenv("SAFEFLOOR_FRAMES", str(DATA_DIR / "frames"))),
+            vision_mode=vision_mode,
         )
