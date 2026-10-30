@@ -22,6 +22,7 @@ class Settings:
     timeout: float = 60.0
     frames_dir: Path | None = None
     vision_mode: str = "per_frame"
+    tavily_api_key: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -44,4 +45,5 @@ class Settings:
             timeout=float(os.getenv("SAFEFLOOR_TIMEOUT", "60")),
             frames_dir=Path(os.getenv("SAFEFLOOR_FRAMES", str(DATA_DIR / "frames"))),
             vision_mode=vision_mode,
+            tavily_api_key=os.getenv("TAVILY_API_KEY") or None,
         )

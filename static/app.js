@@ -67,10 +67,16 @@ async function openObs(id) {
 }
 $("#obs-close").addEventListener("click", () => $("#obs-dialog").close());
 
+function regLinks(refs) {
+  const safe = (refs || []).filter((r) => /^https?:\/\//i.test(r.url));
+  if (!safe.length) return "";
+  return `<div class="meta">Regulation: ${safe.map((r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a>`).join(" · ")}</div>`;
+}
+
 async function loadIncidents() {
   const inc = await api("/api/incidents");
   $("#incidents").innerHTML = inc.length
-    ? inc.map((i) => `<li>${sev(i.severity)}<strong>${esc(i.title)}</strong> <span class="meta">obs ${i.observation_ids.join(", ")}</span></li>`).join("")
+    ? inc.map((i) => `<li>${sev(i.severity)}<strong>${esc(i.title)}</strong> <span class="meta">obs ${i.observation_ids.join(", ")}</span>${regLinks(i.regulation_refs)}</li>`).join("")
     : "<li>None filed yet.</li>";
 }
 

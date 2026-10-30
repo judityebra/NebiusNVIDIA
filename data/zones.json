@@ -6,8 +6,8 @@
       "name": "Loading dock A",
       "camera": "cam-01",
       "rules": [
-        {"id": "ppe-vest", "text": "High-visibility vest required for all people", "severity": "high"},
-        {"id": "forklift-gap", "text": "Pedestrians keep 3 m from moving forklifts", "severity": "critical"}
+        {"id": "ppe-vest", "text": "High-visibility vest required for all people", "severity": "high", "regulation_query": "OSHA high-visibility safety apparel requirements warehouse workers"},
+        {"id": "forklift-gap", "text": "Pedestrians keep 3 m from moving forklifts", "severity": "critical", "regulation_query": "OSHA powered industrial trucks pedestrian safety forklift"}
       ]
     },
     {
@@ -15,8 +15,8 @@
       "name": "Racking aisle 7",
       "camera": "cam-02",
       "rules": [
-        {"id": "ppe-helmet", "text": "Hard hat required when picking above shoulder height", "severity": "high"},
-        {"id": "clear-aisle", "text": "No pallets or debris left in the walkway", "severity": "medium"}
+        {"id": "ppe-helmet", "text": "Hard hat required when picking above shoulder height", "severity": "high", "regulation_query": "OSHA head protection hard hat requirements"},
+        {"id": "clear-aisle", "text": "No pallets or debris left in the walkway", "severity": "medium", "regulation_query": "OSHA walking-working surfaces aisles passageways housekeeping"}
       ]
     },
     {
@@ -24,8 +24,8 @@
       "name": "Battery charging bay",
       "camera": "cam-03",
       "rules": [
-        {"id": "no-entry", "text": "Authorised staff only; no pedestrians during charging", "severity": "critical"},
-        {"id": "no-smoking", "text": "No open flames or smoking", "severity": "critical"}
+        {"id": "no-entry", "text": "Authorised staff only; no pedestrians during charging", "severity": "critical", "regulation_query": "OSHA powered industrial truck battery charging area authorized personnel"},
+        {"id": "no-smoking", "text": "No open flames or smoking", "severity": "critical", "regulation_query": "OSHA flammable battery charging area smoking open flames"}
       ]
     }
   ]
