@@ -23,6 +23,7 @@ class Settings:
     frames_dir: Path | None = None
     vision_mode: str = "per_frame"
     tavily_api_key: str | None = None
+    webhook_url: str | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -46,4 +47,5 @@ class Settings:
             frames_dir=Path(os.getenv("SAFEFLOOR_FRAMES", str(DATA_DIR / "frames"))),
             vision_mode=vision_mode,
             tavily_api_key=os.getenv("TAVILY_API_KEY") or None,
+            webhook_url=os.getenv("SAFEFLOOR_WEBHOOK_URL") or None,
         )

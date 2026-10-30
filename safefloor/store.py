@@ -24,6 +24,14 @@ CREATE TABLE IF NOT EXISTS violations (
     severity TEXT NOT NULL,
     confidence REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    observation_id INTEGER NOT NULL REFERENCES observations(id),
+    rule_id TEXT NOT NULL,
+    zone_id TEXT NOT NULL,
+    created_ts TEXT NOT NULL,
+    payload TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS incidents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_ts TEXT NOT NULL,
@@ -43,6 +51,7 @@ MIGRATIONS: list[tuple[str, str, str]] = [
     ("observations", "clip", "TEXT"),
     ("observations", "frame_count", "INTEGER"),
     ("incidents", "regulation_refs", "TEXT"),
+    ("incidents", "status", "TEXT DEFAULT 'filed'"),  # existing rows count as filed
 ]
 
 
@@ -198,20 +207,54 @@ class Store:
         observation_ids: list[int],
         body: str,
         regulation_refs: list[dict[str, str]] | None = None,
+        status: str = "filed",
     ) -> int:
         cur = self.conn.execute(
-            "INSERT INTO incidents (created_ts, title, severity, observation_ids, body, regulation_refs) VALUES (?, ?, ?, ?, ?, ?)",
-            (created_ts, title, severity, json.dumps(observation_ids), body, json.dumps(regulation_refs or [])),
+            "INSERT INTO incidents (created_ts, title, severity, observation_ids, body, regulation_refs, status) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (created_ts, title, severity, json.dumps(observation_ids), body, json.dumps(regulation_refs or []), status),
         )
         self.conn.commit()
         return cur.lastrowid
 
+    @staticmethod
+    def _incident(row: sqlite3.Row) -> dict[str, Any]:
+        d = dict(row)
+        d["observation_ids"] = json.loads(d["observation_ids"])
+        d["regulation_refs"] = json.loads(d["regulation_refs"] or "[]")
+        d["status"] = d.get("status") or "filed"
+        return d
+
     def incidents(self) -> list[dict[str, Any]]:
-        rows = self.conn.execute("SELECT * FROM incidents ORDER BY id DESC").fetchall()
-        out = []
-        for r in rows:
-            d = dict(r)
-            d["observation_ids"] = json.loads(d["observation_ids"])
-            d["regulation_refs"] = json.loads(d["regulation_refs"] or "[]")
-            out.append(d)
-        return out
+        return [self._incident(r) for r in self.conn.execute("SELECT * FROM incidents ORDER BY id DESC").fetchall()]
+
+    def get_incident(self, incident_id: int) -> dict[str, Any] | None:
+        row = self.conn.execute("SELECT * FROM incidents WHERE id = ?", (incident_id,)).fetchone()
+        return self._incident(row) if row else None
+
+    def confirm_incident(self, incident_id: int) -> None:
+        self.conn.execute("UPDATE incidents SET status = 'filed' WHERE id = ?", (incident_id,))
+        self.conn.commit()
+
+    def add_alert(self, observation_id: int, rule_id: str, zone_id: str, created_ts: str, payload: dict[str, Any]) -> int:
+        cur = self.conn.execute(
+            "INSERT INTO alerts (observation_id, rule_id, zone_id, created_ts, payload) VALUES (?, ?, ?, ?, ?)",
+            (observation_id, rule_id, zone_id, created_ts, json.dumps(payload)),
+        )
+        self.conn.commit()
+        return cur.lastrowid
+
+    def _alert(self, row: sqlite3.Row) -> dict[str, Any]:
+        d = dict(row)
+        d["payload"] = json.loads(d["payload"])
+        d["incident_id"] = d["payload"].get("incident_id")
+        incident = self.get_incident(d["incident_id"]) if d["incident_id"] else None
+        d["status"] = incident["status"] if incident else "unknown"
+        return d
+
+    def get_alert(self, alert_id: int) -> dict[str, Any] | None:
+        row = self.conn.execute("SELECT * FROM alerts WHERE id = ?", (alert_id,)).fetchone()
+        return self._alert(row) if row else None
+
+    def alerts(self) -> list[dict[str, Any]]:
+        return [self._alert(r) for r in self.conn.execute("SELECT * FROM alerts ORDER BY id DESC").fetchall()]

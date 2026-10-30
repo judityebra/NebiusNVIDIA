@@ -73,10 +73,44 @@ function regLinks(refs) {
   return `<div class="meta">Regulation: ${safe.map((r) => `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title)}</a>`).join(" · ")}</div>`;
 }
 
+async function loadAlerts() {
+  const alerts = (await api("/api/alerts")).filter((a) => a.status === "draft");
+  const strip = $("#alert-strip");
+  strip.hidden = !alerts.length;
+  strip.innerHTML = alerts.map((a) => `
+    <div class="alert">
+      <strong>${sev("critical")}${esc(a.payload.rule)}</strong>
+      <span class="meta">${esc(a.payload.zone_name)} · ${esc(a.payload.ts)} · obs ${a.observation_id}</span>
+      <details><summary>Alert payload</summary><pre>${esc(JSON.stringify(a.payload, null, 2))}</pre></details>
+    </div>`).join("");
+  $("#stack").className = `stack ${alerts.length ? "red" : "green"}`;
+  $("#stack-text").textContent = alerts.length ? `${alerts.length} unconfirmed alert(s)` : "No open alerts";
+}
+
+async function confirmIncident(id) {
+  try {
+    await api(`/api/incidents/${encodeURIComponent(id)}/confirm`, { method: "POST" });
+  } catch (e) {
+    alert(e.message);
+  }
+  loadIncidents(); loadAlerts();
+}
+$("#incidents").addEventListener("click", (e) => {
+  if (e.target.dataset && e.target.dataset.confirm) confirmIncident(e.target.dataset.confirm);
+});
+
+function connectStream() {
+  if (!window.EventSource) return;
+  const es = new EventSource("/api/stream");  // reconnects by itself if the connection drops
+  es.addEventListener("observation", () => loadFeed());
+  es.addEventListener("alert", () => { loadAlerts(); loadIncidents(); });
+  es.addEventListener("incident", () => { loadAlerts(); loadIncidents(); });
+}
+
 async function loadIncidents() {
   const inc = await api("/api/incidents");
   $("#incidents").innerHTML = inc.length
-    ? inc.map((i) => `<li>${sev(i.severity)}<strong>${esc(i.title)}</strong> <span class="meta">obs ${i.observation_ids.join(", ")}</span>${regLinks(i.regulation_refs)}</li>`).join("")
+    ? inc.map((i) => `<li>${sev(i.severity)}<strong>${esc(i.title)}</strong> <span class="meta">obs ${i.observation_ids.join(", ")}</span>${i.status === "draft" ? ` <span class="src draft">draft</span> <button type="button" class="confirm" data-confirm="${i.id}">Confirm</button>` : ""}${regLinks(i.regulation_refs)}</li>`).join("")
     : "<li>None filed yet.</li>";
 }
 
@@ -193,4 +227,4 @@ $("#clip-form").addEventListener("submit", async (e) => {
   }
 });
 
-loadStatus(); loadZones(); loadFeed(); loadIncidents();
+loadStatus(); loadZones(); loadFeed(); loadIncidents(); loadAlerts(); connectStream();

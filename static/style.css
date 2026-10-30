@@ -62,3 +62,13 @@ dialog h3 { margin-top: 0; }
 #clip-form { margin-top: 8px; }
 #clip-status.busy::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -1px; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.stack { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+.stack .dot { width: 12px; height: 12px; border-radius: 50%; background: #2e7d32; box-shadow: 0 0 0 3px rgba(46, 125, 50, .25); }
+.stack.red .dot { background: var(--critical); box-shadow: 0 0 0 3px rgba(198, 40, 40, .3); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(198, 40, 40, .05); } }
+#alert-strip { margin: 12px 24px 0; display: grid; gap: 8px; }
+#alert-strip .alert { border: 1px solid var(--critical); border-left-width: 6px; border-radius: 8px; padding: 8px 12px; background: var(--panel); }
+@media (max-width: 1000px) { #alert-strip { margin: 12px 16px 0; } }
+.src.draft { background: var(--medium); color: #fff; }
+button.confirm { font-size: 12px; padding: 1px 8px; }
