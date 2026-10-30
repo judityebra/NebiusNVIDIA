@@ -35,6 +35,13 @@ CREATE TABLE IF NOT EXISTS incidents (
 """
 
 
+# Columns added after the first release: (table, column, type). Applied to existing DBs on open.
+MIGRATIONS: list[tuple[str, str, str]] = [
+    ("observations", "source", "TEXT"),
+    ("observations", "frame_ext", "TEXT"),
+]
+
+
 @dataclass
 class Zone:
     id: str
@@ -57,6 +64,18 @@ class Store:
         self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Add any column an older database file is missing, keeping its rows."""
+        have: dict[str, set[str]] = {}
+        for table, column, ctype in MIGRATIONS:
+            if table not in have:
+                have[table] = {r["name"] for r in self.conn.execute(f"PRAGMA table_info({table})")}
+            if column not in have[table]:
+                self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ctype}")
+                have[table].add(column)
+        self.conn.commit()
 
     def zone_for_camera(self, camera: str) -> Zone | None:
         return next((z for z in self.zones.values() if z.camera == camera), None)
@@ -66,8 +85,12 @@ class Store:
         if zone is None:
             raise ValueError(f"unknown camera {obs['camera']!r}")
         cur = self.conn.execute(
-            "INSERT INTO observations (camera, zone_id, ts, summary, objects) VALUES (?, ?, ?, ?, ?)",
-            (obs["camera"], zone.id, obs["ts"], obs["summary"], json.dumps(obs.get("objects", []))),
+            "INSERT INTO observations (camera, zone_id, ts, summary, objects, source, frame_ext) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                obs["camera"], zone.id, obs["ts"], obs["summary"], json.dumps(obs.get("objects", [])),
+                obs.get("source"), obs.get("frame_ext"),
+            ),
         )
         obs_id = cur.lastrowid
         for v in obs.get("violations", []):
@@ -130,12 +153,18 @@ class Store:
             sql += " AND id IN (SELECT observation_id FROM violations)"
         return sql, args
 
+    def clear_frame(self, obs_id: int) -> None:
+        self.conn.execute("UPDATE observations SET frame_ext = NULL WHERE id = ?", (obs_id,))
+        self.conn.commit()
+
     def get_observation(self, obs_id: int) -> dict[str, Any] | None:
         row = self.conn.execute("SELECT * FROM observations WHERE id = ?", (obs_id,)).fetchone()
         return self._with_violations(dict(row)) if row else None
 
     def _with_violations(self, row: dict[str, Any]) -> dict[str, Any]:
         row["objects"] = json.loads(row["objects"])
+        row["source"] = row.get("source") or "unknown"
+        row["has_frame"] = bool(row.get("frame_ext"))
         vs = self.conn.execute(
             "SELECT rule_id, severity, confidence FROM violations WHERE observation_id = ?", (row["id"],)
         ).fetchall()

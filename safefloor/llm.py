@@ -131,7 +131,7 @@ class MockLLM:
         obs = result.get("observations", []) if isinstance(result, dict) else []
         if not obs:
             return "I found no matching observations."
-        lines = [f"- [{o['ts']}] {o['zone_id']}: {o['summary']} (obs {o['id']})" for o in obs]
+        lines = [f"- [{o['ts']}] {o['zone_id']}: {o['summary']} [obs {o['id']}]" for o in obs]
         return f"Found {len(obs)} observation(s) (mock model):\n" + "\n".join(lines)
 
     def vision(self, prompt, image_b64, mime="image/jpeg"):
