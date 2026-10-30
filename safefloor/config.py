@@ -20,6 +20,7 @@ class Settings:
     zones_path: Path
     mock: bool
     timeout: float = 60.0
+    frames_dir: Path | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -37,4 +38,5 @@ class Settings:
             zones_path=Path(os.getenv("SAFEFLOOR_ZONES", str(DATA_DIR / "zones.json"))),
             mock=mock,
             timeout=float(os.getenv("SAFEFLOOR_TIMEOUT", "60")),
+            frames_dir=Path(os.getenv("SAFEFLOOR_FRAMES", str(DATA_DIR / "frames"))),
         )

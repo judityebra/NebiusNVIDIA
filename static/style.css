@@ -47,3 +47,15 @@ details { font-size: 12px; color: var(--muted); margin-top: 6px; }
 details pre { white-space: pre-wrap; word-break: break-word; }
 .mt { margin-top: 18px; }
 #incidents { padding-left: 18px; font-size: 14px; }
+.src { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 0 6px; border-radius: 4px; background: var(--line); color: var(--ink); }
+.src.nemotron { background: var(--accent); color: var(--accent-ink); }
+.src.mock { background: #f2c14e; color: #3a2a00; }
+.thumb { display: block; max-height: 90px; max-width: 100%; border-radius: 6px; margin: 6px 0; cursor: zoom-in; }
+.cite { font: inherit; font-size: 12px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--accent); background: transparent; color: var(--ink); cursor: pointer; }
+.cite.bad { border-color: var(--critical); color: var(--critical); }
+.badge-cite { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; color: #fff; }
+.badge-cite.ok { background: #2e7d32; } .badge-cite.bad { background: var(--critical); }
+dialog { max-width: min(560px, 92vw); border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--ink); }
+dialog::backdrop { background: rgba(0, 0, 0, .5); }
+dialog .frame { max-width: 100%; border-radius: 6px; }
+dialog h3 { margin-top: 0; }
