@@ -12,8 +12,12 @@
     <h1>SafeFloor</h1>
     <p class="sub">Warehouse safety copilot · NVIDIA Nemotron on Nebius Token Factory</p>
   </div>
-  <span id="mode" class="badge"></span>
+  <span class="header-right">
+    <span id="stack" class="stack green" role="status" aria-live="polite"><i class="dot"></i><span id="stack-text">No open alerts</span></span>
+    <span id="mode" class="badge"></span>
+  </span>
 </header>
+<section id="alert-strip" hidden aria-label="Active critical alerts"></section>
 
 <main>
   <section class="panel" id="zones-panel">

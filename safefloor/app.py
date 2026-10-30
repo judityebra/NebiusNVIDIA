@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import tempfile
@@ -11,11 +12,12 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .agent import Agent
+from .alerts import AlertHub, sse_format
 from .config import DATA_DIR, ROOT, Settings
 from .llm import make_llm
 from .events import build_events
@@ -25,6 +27,7 @@ from .store import Store, load_zones
 from .video import sample_frames
 
 MAX_CLIP_BYTES = 60 * 1024 * 1024
+HEARTBEAT_SECONDS = 15
 TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
@@ -65,15 +68,23 @@ class Question(BaseModel):
     history: list[dict[str, Any]] | None = None
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, hub_sender=None) -> FastAPI:
     settings = settings or Settings.from_env()
     store = Store(settings.db_path, load_zones(settings.zones_path))
     seed(store)
+    hub = AlertHub(store, settings.webhook_url, **({"sender": hub_sender} if hub_sender else {}))
     llm = make_llm(settings)
     frames_dir = settings.frames_dir or settings.db_path.parent / "frames"
     agent = Agent(llm, store, regulations=RegulationLookup(settings.tavily_api_key, settings.mock))
 
     app = FastAPI(title="SafeFloor")
+    app.state.hub = hub
+
+    def finish(obs_id: int) -> dict[str, Any]:
+        """Announce a stored observation (live feed, alerts, webhook) and return it."""
+        obs = store.get_observation(obs_id)
+        hub.on_observation(obs)
+        return obs
 
     def save_frame(obs_id: int, ext: str, data: bytes) -> None:
         try:
@@ -137,7 +148,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         obs["frame_ext"] = frame_ext(image.content_type, image.filename)
         obs_id = store.add_observation(obs)
         save_frame(obs_id, obs["frame_ext"], data)
-        return store.get_observation(obs_id)
+        return finish(obs_id)
 
     @app.post("/api/clips")
     def ingest_clip(
@@ -202,8 +213,45 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 }
             )
             save_frame(obs_id, "jpg", ev["jpeg"])
-            stored.append(store.get_observation(obs_id))
+            stored.append(finish(obs_id))
         return JSONResponse(stored, headers={"X-Frames-Skipped": str(len(analysed) - len(frames))})
+
+    @app.get("/api/alerts")
+    def alerts():
+        return store.alerts()
+
+    @app.post("/api/incidents/{incident_id}/confirm")
+    def confirm_incident(incident_id: int):
+        incident = store.get_incident(incident_id)
+        if incident is None:
+            raise HTTPException(404, f"no incident {incident_id}")
+        if incident["status"] != "draft":
+            raise HTTPException(409, f"incident {incident_id} is already {incident['status']}")
+        store.confirm_incident(incident_id)
+        hub.publish("incident", {"id": incident_id, "status": "filed"})
+        return store.get_incident(incident_id)
+
+    @app.get("/api/stream")
+    async def stream():
+        async def events():
+            q = hub.subscribe()
+            try:
+                yield ": connected\n\n"
+                while True:
+                    try:
+                        event, data = await asyncio.wait_for(q.get(), timeout=HEARTBEAT_SECONDS)
+                    except asyncio.TimeoutError:
+                        yield ": heartbeat\n\n"
+                        continue
+                    yield sse_format(event, data)
+            finally:
+                hub.unsubscribe(q)
+
+        return StreamingResponse(
+            events(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @app.post("/api/ask")
     def ask(q: Question):
